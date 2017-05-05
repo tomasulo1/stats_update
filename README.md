@@ -4,4 +4,4 @@ Baseball stats? Something something Python??
 
 ## Inspiring Image
 
-![Inspiring Image](inspiring image.jpg)
+![Inspiring Image](InspiringImage.jpg)
