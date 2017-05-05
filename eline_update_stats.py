@@ -88,7 +88,7 @@ def calc_bvalue(stats):
 
 def calc_pvalue(stats):
     val = defaultdict(int)
-    val['wW'] = round(2*((stats['w']10/95)**2), 3)
+    val['wW'] = round(2*((stats['w']*10/95)**2), 3)
     if stats['sv'] < 10:
         val['wSV'] = 0
     elif stats['sv'] < 20:
@@ -109,19 +109,16 @@ def get_stats(url, team, tipe):
         r = requests.get(url)
     except:
         return [None, None]
-    soup = BeautifulSoup(r.content)
+    soup = BeautifulSoup(r.content, "html5lib")
 
     #get the standard chart
     stat_chart = soup.find(id="SeasonStats1_dgSeason1_ctl00")
     #print(stat_chart)
     #now need to grab 2 entries: current season and Depth Charts remaining projections
     i = 0
-    if tipe == 1:
-        cur = defaultdict(int)
-        est = defaultdict(int)
-    else:
-        cur = defaultdict(int)
-        est = defaultdict(int)
+    cur = defaultdict(int)
+    est = defaultdict(int)
+
     rows = stat_chart.find_all('tr')
     for row in reversed(rows):
         try:
@@ -132,21 +129,20 @@ def get_stats(url, team, tipe):
             entry = row.td.next_sibling.get_text()
         except:
             continue
-        
+
         if year == '2017':
-            #print(entry)
             if entry == team:
                 i += 1
                 if tipe == 1:
-                    cur = read_bstats(row)
+                    read_bstats(cur, row)
                 else:
-                    cur = read_pstats(row)
+                    read_pstats(cur, row)
             if entry == "Depth Charts (R)":
                 i += 1
                 if tipe == 1:
-                    est = read_bstats(row)
+                    read_bstats(est, row)
                 else:
-                    est = read_pstats(row)
+                    read_pstats(est, row)
         if i == 2:
             break
         
@@ -159,30 +155,37 @@ pitchers = pd.read_csv('pitchers.csv')
 
 calculated_batter = []
 for i, player in batters.iterrows():
-    [cur, est] = get_stats(player['Team'], player['Name'], 1)       
+    [cur, est] = get_stats(player['url'], player['Team'], 1)       
+    if(cur == None):
+        print('Error reading batter page for '+player[0])
+        break
+    
     total = add_bstats(cur, est)
     val = calc_bvalue(total)
     
     calculated_batter.append({**cur, **est, **total, **val})
+    print("Completed: "+player['Name'])
 
 calculated_batter_df = pd.DataFrame(calculated_batter)
 final_batters = pd.concat([batters, calculated_batter_df], axis=1)
 
 
 calculated_pitcher = []
-for player in pitchers:
-    [cur, est] = get_stats(player[2], player[1], 2)
+for i, player in pitchers.iterrows():
+    [cur, est] = get_stats(player['url'], player['Team'], 2)
     if(cur == None):
         print('Error reading pitcher page for '+player[0])
         break
+    
     total = add_pstats(cur, est)
     val = calc_pvalue(total)
     
     calculated_pitcher.append({**cur, **est, **total, **val})
- 
+    print("Completed: "+player['Name'])
+    
 calculated_pitcher_df = pd.DataFrame(calculated_pitcher)
 final_pitchers = pd.concat([pitchers, calculated_pitcher_df], axis=1)
 
-final_batters.write_csv('batter_output.csv')
-final_pitchers.write_csv('pitcher_output.csv')
+final_batters.to_csv('batter_output.csv')
+final_pitchers.to_csv('pitcher_output.csv')
 
