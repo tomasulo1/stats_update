@@ -26,7 +26,7 @@ def read_bstats(s, row):
     else:
         s['ave'] = round(s['h'] / s['ab'], 3)
     s['r'] = int(elements[10].text)
-    s['ip'] = int(elements[11].text)
+    s['rbi'] = int(elements[11].text)
     s['hr'] = int(elements[9].text)
     s['sb'] = int(elements[19].text)
     return
@@ -147,45 +147,58 @@ def get_stats(url, team, tipe):
             break
         
     return [cur, est]
-        
+
+def getlist(dict_):
+    return [dict_['ab'], dict_['h'], dict_['ave'], dict_['hr'], dict_['r'],dict_['rbi'], dict_['sb']]
+
+def getlist2(dict_):
+    return [dict_['total'], dict_['wAve'], dict_['wHr'], dict_['wR'], dict_['wRbi'],dict_['wSb']]
+
+def getlist3(dict_):
+    return [dict_['ip'], dict_['w'], dict_['sv'], dict_['k'], dict_['era'],dict_['whip']]
+
+def getlist4(dict_):
+    return [dict_['total'], dict_['wW'], dict_['wSV'], dict_['wK'], dict_['wEra'],dict_['wWhip']]
 
 #open for reading
 batters = pd.read_csv('batters.csv')
-pitchers = pd.read_csv('pitchers.csv')
 
 calculated_batter = []
 for i, player in batters.iterrows():
     [cur, est] = get_stats(player['url'], player['Team'], 1)       
     if(cur == None):
-        print('Error reading batter page for '+player[0])
+        print('Error reading batter page for '+player['Name'])
         break
     
     total = add_bstats(cur, est)
     val = calc_bvalue(total)
-    
-    calculated_batter.append({**cur, **est, **total, **val})
+
+    calculated_batter.append([player['Name'], player['Team'], player['url']]+getlist(cur)+getlist(est)+getlist(total)+getlist2(val))
     print("Completed: "+player['Name'])
-
+    
 calculated_batter_df = pd.DataFrame(calculated_batter)
-final_batters = pd.concat([batters, calculated_batter_df], axis=1)
+calculated_batter_df.columns = batters.columns
+calculated_batter_df.to_csv('batter_output.csv', index=False)
 
+
+#open for reading
+pitchers = pd.read_csv('pitchers.csv')
 
 calculated_pitcher = []
 for i, player in pitchers.iterrows():
     [cur, est] = get_stats(player['url'], player['Team'], 2)
     if(cur == None):
-        print('Error reading pitcher page for '+player[0])
+        print('Error reading pitcher page for '+player['Name'])
         break
     
     total = add_pstats(cur, est)
     val = calc_pvalue(total)
     
-    calculated_pitcher.append({**cur, **est, **total, **val})
+    calculated_pitcher.append([player['Name'], player['Team'], player['url']]+getlist3(cur)+getlist3(est)+getlist3(total)+getlist4(val))
+
     print("Completed: "+player['Name'])
     
 calculated_pitcher_df = pd.DataFrame(calculated_pitcher)
-final_pitchers = pd.concat([pitchers, calculated_pitcher_df], axis=1)
-
-final_batters.to_csv('batter_output.csv')
-final_pitchers.to_csv('pitcher_output.csv')
+calculated_pitcher_df.columns = pitchers.columns
+calculated_pitcher_df.to_csv('pitcher_output.csv', index=False)
 
